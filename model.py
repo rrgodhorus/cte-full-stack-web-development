@@ -9,10 +9,20 @@ class User(Document):
     firstTimeUser=BooleanField(required=True,default=True)
     aadhar = IntField(required=True)
     address = StringField()
+    accountNo = IntField(required=True, unique=True)
+    balance = DecimalField(required=True, min_value=1000, default=5000)
     
     def save(self, *args, **kwargs):
         if (len(str(self.aadhar)) != 12):
             raise Exception("InvalidAadhar")
+        if not self.accountNo:
+            fobj = open('lastnum','r')
+            lastAcc = int(fobj.read())
+            fobj.close()
+            self.accountNo = lastAcc+1
+            fobj = open('lastnum','w')
+            fobj.write(str(self.accountNo))
+            fobj.close()
         super().save(self, *args, **kwargs)
 
 class Transfer(Document):
@@ -20,14 +30,24 @@ class Transfer(Document):
     ReceiverAccount = IntField(required = True)
     Amount = DecimalField(required = True, min_value=0)
     SenderIP = StringField(max_length=15,min_length=8)
-    Date = DateTimeField(required=True, default=datetime.datetime.now)
+    Date = DateTimeField(required=True, default=datetime.datetime.now())
 
     def save(self, *args, **kwargs):
         if self.SenderAccount== self.ReceiverAccount:
             raise Exception("InvalidTransaction")
         if (len(str(self.SenderAccount)) != 10) or (len(str(self.ReceiverAccount)) != 10):
             raise Exception("InvalidAccountNumber")
-        super().save(self, *args, **kwargs)
+        if User.objects.get(accountNo=self.SenderAccount).balance<=self.Amount:
+            raise Exception("InsufficientBalance")
+        else:
+            self.transferMoney()
+            super().save(self, *args, **kwargs)
+    
+    def transferMoney(self):
+        senderAcc = User.objects.get(accountNo=self.SenderAccount)
+        senderAcc.update(set__balance=senderAcc.balance-self.Amount)
+        recieverAcc = User.objects.get(accountNo=self.ReceiverAccount)
+        recieverAcc.update(set__balance=recieverAcc.balance+self.Amount)
 
 #print(__name__)
 
