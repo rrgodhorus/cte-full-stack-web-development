@@ -26,7 +26,7 @@ def transferMoney(token,recieverAcc,senderip,amount):
         return {"message":"UnauthorizedRequest"}, 401
     else:
         try:
-            cust = User.objects.get(username=token[0])
+            cust = User.objects.get(username=tokenValidator[0])
             bankTransfer = Transfer(
                 SenderAccount=cust.accountNo,
                 ReceiverAccount=recieverAcc,
